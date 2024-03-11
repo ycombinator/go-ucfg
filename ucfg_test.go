@@ -24,6 +24,7 @@ import (
 
 	"github.com/elastic/go-ucfg/parse"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var opts = []Option{
@@ -577,5 +578,51 @@ func TestNewFromWithMaxIdxAndEnableNumKeys(t *testing.T) {
 		}
 
 		assert.Equal(t, tc.want, m)
+	}
+}
+
+func TestAlias(t *testing.T) {
+	type config struct {
+		Output struct {
+			Workers int `config:"workers|worker"`
+		} `config:"output"`
+	}
+
+	tests := map[string]struct {
+		input           map[string]interface{}
+		expectedWorkers int
+	}{
+		"worker": {
+			input: map[string]interface{}{
+				"output.worker": 5,
+			},
+			expectedWorkers: 5,
+		},
+		"workers": {
+			input: map[string]interface{}{
+				"output.workers": 3,
+			},
+			expectedWorkers: 3,
+		},
+		"both": {
+			input: map[string]interface{}{
+				"output.worker":  5,
+				"output.workers": 3,
+			},
+			expectedWorkers: 3,
+		},
+	}
+
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			c, err := NewFrom(test.input, opts...)
+			require.NoError(t, err)
+
+			var cfg config
+			err = c.Unpack(&cfg, opts...)
+			require.NoError(t, err)
+
+			require.Equal(t, test.expectedWorkers, cfg.Output.Workers)
+		})
 	}
 }
